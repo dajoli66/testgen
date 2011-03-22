@@ -155,6 +155,20 @@ sub load_tests {
 
 }
 
+# autoload tests
+# NB this only works for one file per 'module'
+# additional files need an explicit
+#   __PACKAGE__->load_tests(\*DATA);
+# NBNB this line is always "safe" to include
+# thanks to the eof() test below
+INIT {
+  foreach my $subclass (__PACKAGE__->_test_classes) {
+    no strict 'refs';
+    next if eof(\*{"$subclass"."::DATA"});
+    __PACKAGE__->load_tests (\*{"$subclass"."::DATA"});
+  }
+}
+
 # preserved captures
 
 # we wrap Test::Builder::_regex_ok which implements like and unlike
