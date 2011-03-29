@@ -1,0 +1,17 @@
+#!/usr/bin/env perl
+package My::Test::Generated;
+use strict;
+use warnings;
+
+use Test::More;
+
+use FindBin;
+use lib "$FindBin::Bin/../lib/perl5";
+use lib "$FindBin::Bin/lib/perl5";
+
+use base "Test::Generated";
+
+__PACKAGE__->load_tests ($_) foreach @ARGV;
+
+__PACKAGE__->runtests;
+1;
