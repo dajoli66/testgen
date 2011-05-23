@@ -15,6 +15,7 @@ sub findfiles {
   my @files = ();
   foreach my $fn (sort @candidates) {
     if (-d $fn) {
+      next if $fn =~ m{t/lib};  
       push @files, findfiles(<$fn/*>);
     } elsif (-r _) {
       push @files, $fn if $fn =~ /\.pm$/;

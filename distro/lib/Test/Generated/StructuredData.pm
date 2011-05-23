@@ -3,6 +3,7 @@ use strict;
 use warnings;
 
 use Test::More;
+use base 'Test::Generated';
 
 #
 # define standard Test::Generated API methods
@@ -33,6 +34,10 @@ sub import {
         push @{$caller . '::ISA'}, __PACKAGE__;
     }
 
+    # by default structured data testers are abstract, i.e.
+    # have no tests of their own.
+    # set 'has_tests' to override (e.g. for startup/setup/teardown/shutdown tests)
+    $caller->SKIP_CLASS(1) unless $config{has_tests};
 }
 
 sub can_handle {

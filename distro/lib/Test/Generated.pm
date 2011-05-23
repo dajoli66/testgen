@@ -20,6 +20,7 @@ Test::Generated->SKIP_CLASS( 1 );
 my @generator_classes = (
   'Test::Generated::Command',
   'Test::Generated::Manifest',
+  'Test::Generated::Perl',
   );
 
 sub generator_classes {
