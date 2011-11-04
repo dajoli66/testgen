@@ -203,15 +203,17 @@ sub preserve_captures {
   # return value when no captures are present... see perlop
   return unless defined $1;
 
-  $pcaps{$fixt} ||= {};
+  my $fixtref = (ref $fixt) || $fixt;
+
+  $pcaps{$fixtref} ||= {};
 
   # NB captures numbered from 1, not from 0 ($0 is unrelated!)
   # *but* @captures number from 0
-  $pcaps{$fixt}{1+$_} = $captures[$_] foreach (0 .. $#captures);
+  $pcaps{$fixtref}{1+$_} = $captures[$_] foreach (0 .. $#captures);
 
   # check for named captures, which override if the name is a number
   if (scalar keys(%+)) {
-    $pcaps{$fixt}{$_} = $+{$_} foreach keys(%+);
+    $pcaps{$fixtref}{$_} = $+{$_} foreach keys(%+);
   }
 }
 
@@ -220,14 +222,18 @@ sub capture {
   my $fixt = shift;
   my %caps = @_;
 
-  $pcaps{$fixt}{$_} = $caps{$_} foreach keys(%caps);
+  my $fixtref = (ref $fixt) || $fixt;
+
+  $pcaps{$fixtref}{$_} = $caps{$_} foreach keys(%caps);
 }
 
 sub interpolate_preserved_captures {
   my $fixt = shift;
   my $text = shift;
 
-  my $data = $pcaps{$fixt};
+  my $fixtref = (ref $fixt) || $fixt;
+
+  my $data = $pcaps{$fixtref};
 
   $text =~ s{\\k<([^>]+)>}{$data->{$1}}eg;
 
@@ -280,10 +286,14 @@ default settings for certain command line tools or to handle extended ACLs in
 manifests.
 
 Tests using regexp matching will preserve captured subexpressions to be referred
-to in subsequent tests (in the same YAML document). Under Perl 5.10 and later,
+to in subsequent tests (in the same class of tests). Under Perl 5.10 and later,
 the standard named capture syntax can be used directly. For earlier Perl versions
 a similar syntax can refer to numbered captures, or some modules will allow explicit
 control of the preserved capture data.
+
+The capture mechanism can be preloaded with data to configure the actual test
+execution, for example to select hosts or ports via a configuration file or
+computed from the environment.
 
 The basic modules included are each documented separately, this document
 describes the common API they all implement and the way the test methods are
@@ -359,6 +369,31 @@ captures by calling the C<capture> method on the test fixture:
     my $testdoc = shift;
     $fixture->capture( myname => 'my value', myother => 'other value' );
   }
+
+Note that captures are stored per class, for example in the code above the captures will be
+available for any (subsequent) test in the Capture::Example class.
+
+=head2 Using Captures for Configuration
+
+Using the C<capture> method the "\k" values can be set before loading the tests, which will cause
+the entire test document to be interpolated before execution. This could be used to configure a
+test suite to connect to specific servers, or on specific ports, etc. based on arbitrary
+computed values. For example:
+
+=head2 Config Example
+
+  package Config::Example
+  use base 'Test::Generated';
+  __PACKAGE__->capture( host => 'myhost.example.com' );
+  __PACKAGE__->load_tests (\*DATA);
+  1;
+  __DATA__
+  ---
+  - cmd: nc \k<host> daytime
+    out: Mon|Tue|Wed|Thu|Fri
+
+This is obviously an artificial example, but this technique can be useful for random choices
+or configuration via external files or databases.
 
 =head1 TEST GENERATOR API
 
