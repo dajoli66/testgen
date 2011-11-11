@@ -136,6 +136,7 @@ sub load_tests {
     *{$longname} = subname $longname => sub {
       my $fixt = shift;
       diag("Running generated test: $longname");
+      $DB::single = 1;
       foreach my $t (@tests) {
         my ($ntst, $test) = @$t;
         my $tdoc = $fixt->interpolate_preserved_captures_throughout( $ntst );
@@ -232,9 +233,9 @@ sub interpolate_preserved_captures {
   my $text = shift;
 
   my $fixtref = (ref $fixt) || $fixt;
-
   my $data = $pcaps{$fixtref};
 
+  no warnings 'uninitialized';
   $text =~ s{\\k<([^>]+)>}{$data->{$1}}eg;
 
   return $text;

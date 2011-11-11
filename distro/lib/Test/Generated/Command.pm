@@ -14,6 +14,7 @@ sub can_handle {
   my $tdoc  = shift;
 
   return 1 if ref($tdoc) eq 'HASH' and exists $tdoc->{cmd} and not ref($tdoc->{cmd});
+  return 1 if ref($tdoc) eq 'HASH' and exists $tdoc->{ncmd} and not ref($tdoc->{ncmd});
   return 0;
 }
 
@@ -29,7 +30,8 @@ sub normalize {
   my $class = shift;
   my $tdoc  = shift;
 
-  chomp $tdoc->{cmd};
+  chomp $tdoc->{cmd}  if exists $tdoc->{cmd};
+  chomp $tdoc->{ncmd} if exists $tdoc->{ncmd};
   $tdoc->{rc}  = 0  unless defined $tdoc->{rc};
   $tdoc->{err} = '' unless defined $tdoc->{err};
 
@@ -48,6 +50,9 @@ sub count_tests {
   my $class = shift;
   my $tdoc  = shift;
 
+  # ncmd docs have no tests
+  return 0 if exists $tdoc->{ncmd};
+
   my $test_count = 0;
 
   $test_count += 3; # for run() + rc check + signal check
@@ -61,9 +66,11 @@ sub make_tests {
   my $class = shift;
   my $tdoc  = shift;
 
+  my $cmd = (exists $tdoc->{cmd}) ? 'cmd' : 'ncmd';
+
   if ($ENV{TEST_GEN_DEBUG}) {
     print "defining new test:\n";
-    print "  would run '$tdoc->{cmd}'\n";
+    print "  would run '$tdoc->{$cmd}'\n";
     print "  would expect rc of '$tdoc->{rc}'\n";
     print "  would expect stdout to say '$_'\n" foreach @{$tdoc->{out}};
     print "  would expect stderr to say '$_'\n" foreach @{$tdoc->{err}};
@@ -76,35 +83,49 @@ sub make_tests {
       my $test_client = $class->command_runner( $fixt ); # NB not $self
 
       # NB +1 test to run the command
-      $test_client->run($tdoc->{cmd});
+      my $ret = $test_client->run_cmd($tdoc->{$cmd}) ? 1 : 0;
 
-      # check rc is as expected
-      # we always expect no signal
-      is( $test_client->rc & 0x00ff, 0, q{command did not exit by signal} );
-      if ($tdoc->{rc} and $tdoc->{rc} =~ m/^-?\d+$/) {
-        is( $test_client->rc, $tdoc->{rc}, q{command had correct non-zero exit code} );
-      } elsif ($tdoc->{rc}) {
-        isnt( $test_client->rc, 0, q{command had non-zero exit code} );
+      if ($cmd eq 'cmd') {
+          # check command executed
+          ok( $ret, "Can run '$tdoc->{$cmd}'" );
+          # check rc is as expected
+          # we always expect no signal
+          is( $test_client->rc & 0x00ff, 0, q{command did not exit by signal} );
+          if ($tdoc->{rc} and $tdoc->{rc} =~ m/^-?\d+$/) {
+            is( $test_client->rc, $tdoc->{rc}, q{command had correct non-zero exit code} );
+          } elsif ($tdoc->{rc}) {
+            isnt( $test_client->rc, 0, q{command had non-zero exit code} );
+          } else {
+            is( $test_client->rc, 0, q{command had zero exit code} );
+          }
       } else {
-        is( $test_client->rc, 0, q{command had zero exit code} );
+	diag( ($ret ? "Ran" : "Failed to run") . " non-test command '$tdoc->{$cmd}'" );
       }
 
       #check stderr is as expected
       foreach my $err (@{$tdoc->{err}}) {
-        if ($err) {
-          like( $test_client->stderr, qr{$err}, qq{command stderr matched '$err'} );
-        } else {
-          is( $test_client->stderr, $err, q{command has no error} );
-        }
+	if ($cmd eq 'cmd') {
+          if ($err) {
+            like( $test_client->stderr, qr{$err}, qq{command stderr matched '$err'} );
+          } else {
+            is( $test_client->stderr, $err, q{command has no error} );
+          }
+	} else {
+	  $fixt->preserve_captures( $test_client->stderr, qr{$err} ) if $err;
+	}
       }
 
       #check stdout is as expected
       foreach my $out (@{$tdoc->{out}}) {
-        if ($out) {
-          like( $test_client->stdout, qr{$out}, qq{command got expected output '$out'} );
-        } else {
-          is( $test_client->stdout, $out, q{command had no output as expected} );
-        }
+	if ($cmd eq 'cmd') {
+          if ($out) {
+            like( $test_client->stdout, qr{$out}, qq{command got expected output '$out'} );
+          } else {
+            is( $test_client->stdout, $out, q{command had no output as expected} );
+          }
+	} else {
+	  $fixt->preserve_captures( $test_client->stdout, qr{$out} ) if $out;
+	}
       }
 
       # pass through to custom parsers if specified
@@ -144,13 +165,18 @@ Test::Generated::Command - generator module for Test::Generated to handle extern
 This module generates tests for Test::Generated where the exit code and output of an external
 command needs to be validated.
 
-The only required key is C<cmd>, specifying the full command line to be executed.
+The only required key is C<cmd> (or C<ncmd>), specifying the full command line to be executed.
 The command will be executed by a trivial Test::Client object by default, or if
 the test fixture is a subclass of Test::ClientServer the Test::Client object constructed
 by the factory config at startup will be used.
 
 As described in Test::Client, there will be three tests automatically generated
 just for running the command: execution, exit code and a check for signals.
+
+When the command is specified with key C<ncmd>) no tests will be associated but the command
+will be executed without tests. This allows simple preparation and cleanup tasks to be
+included with tests, without making them tests in themselves. Any specified stdout or stderr
+regexps will be matched for captures, and specified parsers still run, but not as tests.
 
 =head1 OPTIONS
 
