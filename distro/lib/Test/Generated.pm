@@ -38,6 +38,17 @@ sub load_generator_classes {
   }
 }
 
+# Sometimes our generator classes need to access methods
+# here, but if we are subclassed they should really use
+# the subclass methods in case of overrides. So we
+# provide a way for our subclasses to tell us they are
+# in charge...
+#    generators will call Test::Generated->base_class->...
+#    subclasses should call __PACKAGE__->set_base_class;
+my $TG_class = __PACKAGE__;
+sub set_base_class { $TG_class = shift; }
+sub base_class     { return $TG_class;  }
+
 ######################################################################
 # Module::Require::require_glob
 # copied from v0.4
@@ -101,14 +112,31 @@ our $_TG_Fixture;
 # generated name
 my $test_name = 'generated00000000';
 
-sub load_tests {
+sub gen_test_file {
+  my $package = shift;
+  my $file    = shift;
+
+  my $fh = IO::File->new($file);
+  return $package->gen_tests( $fh );
+}
+
+sub gen_tests {
   my $package = shift;
 
   my $fh = shift || \*DATA;
   my $contents = slurp $fh;
   my $ydoc = Load( $contents );
 
+  return $package->gen_test_seq( $ydoc );
+}
+
+sub gen_test_seq {
+  my $package = shift;
+  my $ydoc    = shift;
+
   $package->load_generator_classes;
+
+  my @all_tests = ();
 
   foreach my $tst (@$ydoc) {
 
@@ -121,41 +149,70 @@ sub load_tests {
       if ($class->can_handle( $tst )) {
         my $ntst   = $class->normalize  ( $tst  );
         $count    += $class->count_tests( $ntst );
-        push @tests, map {[$ntst, $_]} $class->make_tests ( $ntst );
+        push @tests, [$ntst, $count, [$class->make_tests ( $ntst )]];
       }
     }
 
-    unless (scalar @tests) {
-      warn "no tests generated for item with keys '" . join('/', sort keys %$tst) . "'\n";
-      next;
-    }
+    push @all_tests, @tests;
+  }
+  
+  return @all_tests;
+}
 
+sub load_tests {
+  my $package = shift;
+  $package->install_tests( $package->gen_tests( @_ ) );
+}
+
+sub install_tests {
+  my $package = shift;
+  
+  foreach my $test_list (@_) {
     my $longname = $package . '::' . $test_name;
 
     no strict 'refs';
     *{$longname} = subname $longname => sub {
       my $fixt = shift;
       diag("Running generated test: $longname");
-      $DB::single = 1;
-      foreach my $t (@tests) {
-        my ($ntst, $test) = @$t;
-        my $tdoc = $fixt->interpolate_preserved_captures_throughout( $ntst );
-        {
-          local $_TG_Fixture = $fixt;
-          my $tb_regex_ok = \&Test::Builder::_regex_ok;
-          no warnings 'redefine';
-          local *{"Test::Builder::_regex_ok"} = _tg_regex_ok($tb_regex_ok);
-          $test->( $fixt, $tdoc );
-        }
-      }
+      $package->run_one_test_sequence( $fixt, @$test_list );
     };
 
-    $package->add_testinfo( $test_name, 'test', $count );
+    $package->add_testinfo( $test_name, 'test', $test_list->[1] );
 
     $test_name++;
   }
 
 }
+
+sub run_test_sequence {
+    my $package = shift;
+    my $fixt    = shift;
+    my @testseq = @_;
+
+    foreach my $testseq (@testseq) {
+        $package->run_one_test_sequence( $fixt, @$testseq );
+    }
+}
+
+sub run_one_test_sequence {
+    my $package = shift;
+    my $fixt    = shift;
+    my ($ntst, $count, $tests) = @_;
+
+    no warnings 'redefine';
+    no strict 'refs';
+    foreach my $test (@$tests) {
+        my $clean_tdoc = $ntst;
+        my $tdoc = $fixt->interpolate_preserved_captures_throughout( $clean_tdoc );
+        {
+            local $_TG_Fixture = $fixt;
+            my $tb_regex_ok = \&Test::Builder::_regex_ok;
+            local *{"Test::Builder::_regex_ok"} = _tg_regex_ok($tb_regex_ok);
+            $test->( $fixt, $tdoc );
+        }
+    }
+}
+
 
 # autoload tests
 # NB this only works for one file per 'module'

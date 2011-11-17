@@ -4,14 +4,15 @@ use warnings;
 
 use base 'Test::Generated';
 
+__PACKAGE__->set_base_class;
+
 __PACKAGE__->SKIP_CLASS(1);
 
-__PACKAGE__->generator_classes( qw(
-    Test::Generated::Command
-    Test::Generated::Manifest
-    Test::Generated::Perl
-    My::Generated::date
-    My::Generated::dummy
+__PACKAGE__->generator_classes(
+    Test::Generated->generator_classes, # standard generators
+    qw(
+      My::Generated::date
+      My::Generated::dummy
     ) );
 
 1;
