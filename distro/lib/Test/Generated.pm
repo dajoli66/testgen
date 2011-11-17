@@ -21,6 +21,7 @@ my @generator_classes = (
   'Test::Generated::Command',
   'Test::Generated::Manifest',
   'Test::Generated::Perl',
+  'Test::Generated::ControlFlow',
   );
 
 sub generator_classes {

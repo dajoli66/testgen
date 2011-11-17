@@ -1,0 +1,5 @@
+---
+- perl: ok(1, "included file test")
+  tests: 1
+- cmd: date
+  out: \k<1>
