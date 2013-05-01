@@ -29,15 +29,15 @@ sub count_tests {
 
   my $count = 0;
 
-  map { $count += $_->[1] }
+  map { $count += $_->get_count }
 	Test::Generated->base_class->gen_test_file( $tdoc->{include} )
 		if $tdoc->{include};
 
-  map { $count += $_->[1] }
+  map { $count += $_->get_count }
 	Test::Generated->base_class->gen_test_seq( $tdoc->{todo} )
 		if $tdoc->{todo};
 
-  map { $count += $_->[1] }
+  map { $count += $_->get_count }
 	Test::Generated->base_class->gen_test_seq( $tdoc->{skip} )
 		if $tdoc->{skip};
 
@@ -52,9 +52,9 @@ sub make_tests {
   my $tdoc  = shift;
 
   if (exists $tdoc->{include}) {
-    my @testseqs = Test::Generated->base_class->gen_test_file( $tdoc->{include} );
+    my $testseqlist = Test::Generated->base_class->gen_test_file( $tdoc->{include} );
     return (
-        sub { Test::Generated->base_class->run_test_sequence( shift, @testseqs ) }
+        sub { Test::Generated->base_class->run_test_sequence( shift, $testseqlist ) }
     );
   }
 
@@ -62,31 +62,33 @@ sub make_tests {
     my $reason = $tdoc->{reason};
     $reason ||= 'TODO';
 
-    my $TB = Test::Builder->new; # singleton
+    my $TB = Test::Builder->new;    # singleton
 
-    my @testseqs = Test::Generated->base_class->gen_test_seq( $tdoc->{todo} );
+    my $testseqlist = Test::Generated->base_class->gen_test_seq($tdoc->{todo});
     return (
-	      sub {
-	          $TB->todo_start( $reason );
-            Test::Generated->base_class->run_test_sequence( shift, @testseqs );
-            $TB->todo_end;
- 	      }
+      sub {
+        $TB->todo_start($reason);
+        Test::Generated->base_class->run_test_sequence(shift, $testseqlist);
+        $TB->todo_end;
+      }
     );
   }
 
   if (exists $tdoc->{skip}) {
 
-    my @testseqs = Test::Generated->base_class->gen_test_seq( $tdoc->{skip} );
+    my $testseqlist   = Test::Generated->base_class->gen_test_seq($tdoc->{skip});
     my $skip_block = 0;
-    map {$skip_block += $_->[1]} @testseqs; # total test count in this skip block
+    map {$skip_block += $_->get_count}
+      $testseqlist->get_tests;    # total test count in this skip block
     return (
       sub {
         my $fixt = shift;
         local $TGCF_skip_count = $skip_block;
       SKIP: {
-          foreach my $testseq (@testseqs) {
-            Test::Generated->base_class->run_one_test_sequence( $fixt, @$testseq );
-            $TGCF_skip_count -= $testseq->[1];
+          foreach my $testseq ($testseqlist->get_tests) {
+            Test::Generated->base_class->run_one_test_sequence($fixt,
+              $testseq);
+            $TGCF_skip_count -= $testseq->get_count;
           }
         }
       }
@@ -94,24 +96,25 @@ sub make_tests {
   }
 
   if (exists $tdoc->{skip_if}) {
-      my $expr = $tdoc->{skip_if};
-      my $reason = $tdoc->{reason} || 'remaining tests';
-      my $count  = $tdoc->{count}  || 1;
-      return (
-	  sub {
-		my $fixt = shift;
-		my $tdoc = shift;
-		my $pkg  = ref $fixt;
-	        my $cond = (eval "package $pkg; $expr");
-		if ($@) {
-		    diag "skip condition error: $@";
-		} else {
-		    diag "skip condition evaluated ".($cond ? 'true' : 'false');
-		}
-		# gotta love perl that this can work...
-		Test::More::skip( $reason, $TGCF_skip_count ) if $cond;
-	  }
-	);
+    my $expr   = $tdoc->{skip_if};
+    my $reason = $tdoc->{reason} || 'remaining tests';
+    my $count  = $tdoc->{count} || 1;
+    return (
+      sub {
+        my $fixt = shift;
+        my $tdoc = shift;
+        my $pkg  = ref $fixt;
+        my $cond = (eval "package $pkg; $expr");
+        if ($@) {
+          diag "skip condition error: $@";
+        } else {
+          diag "skip condition evaluated " . ($cond ? 'true' : 'false');
+        }
+
+        # gotta love perl that this can work...
+        Test::More::skip($reason, $TGCF_skip_count) if $cond;
+      }
+    );
   }
 
 }

@@ -12,6 +12,9 @@ use Sub::Name;
 use Perl6::Slurp;
 use Data::Dumper;
 
+use Test::Generated::TestSequence;
+use Test::Generated::TestSequenceList;
+
 # this is an abstract base class, no tests here
 # but we need to skip it or startup/shutdown methods
 # will run for this class
@@ -150,14 +153,18 @@ sub gen_test_seq {
       if ($class->can_handle( $tst )) {
         my $ntst   = $class->normalize  ( $tst  );
         $count    += $class->count_tests( $ntst );
-        push @tests, [$ntst, $count, [$class->make_tests ( $ntst )]];
+        push @tests, Test::Generated::TestSequence->new(
+          document => $ntst,
+          count    => $count,
+          tests    => [$class->make_tests ( $ntst )],
+        );
       }
     }
 
     push @all_tests, @tests;
   }
-  
-  return @all_tests;
+
+  return Test::Generated::TestSequenceList->new( tests => \@all_tests );
 }
 
 sub load_tests {
@@ -167,18 +174,19 @@ sub load_tests {
 
 sub install_tests {
   my $package = shift;
-  
-  foreach my $test_list (@_) {
+  my $testseqlist = shift;
+
+  foreach my $testseq ($testseqlist->get_tests) {
     my $longname = $package . '::' . $test_name;
 
     no strict 'refs';
     *{$longname} = subname $longname => sub {
       my $fixt = shift;
       diag("Running generated test: $longname");
-      $package->run_one_test_sequence( $fixt, @$test_list );
+      $package->run_one_test_sequence( $fixt, $testseq );
     };
 
-    $package->add_testinfo( $test_name, 'test', $test_list->[1] );
+    $package->add_testinfo( $test_name, 'test', $testseq->get_count );
 
     $test_name++;
   }
@@ -188,22 +196,22 @@ sub install_tests {
 sub run_test_sequence {
     my $package = shift;
     my $fixt    = shift;
-    my @testseq = @_;
+    my $testlist = shift;
 
-    foreach my $testseq (@testseq) {
-        $package->run_one_test_sequence( $fixt, @$testseq );
+    foreach my $testseq ($testlist->get_tests) {
+        $package->run_one_test_sequence( $fixt, $testseq );
     }
 }
 
 sub run_one_test_sequence {
     my $package = shift;
     my $fixt    = shift;
-    my ($ntst, $count, $tests) = @_;
+    my $testseq = shift;
 
     no warnings 'redefine';
     no strict 'refs';
-    foreach my $test (@$tests) {
-        my $clean_tdoc = $ntst;
+    foreach my $test ($testseq->get_tests) {
+        my $clean_tdoc = $testseq->get_document;
         my $tdoc = $fixt->interpolate_preserved_captures_throughout( $clean_tdoc );
         {
             local $_TG_Fixture = $fixt;
