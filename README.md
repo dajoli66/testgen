@@ -1,0 +1,4 @@
+testgen
+=======
+
+Test::Generated
