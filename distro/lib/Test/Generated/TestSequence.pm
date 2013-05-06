@@ -32,4 +32,9 @@ sub get_tests {
   return wantarry ? @{$self->{tests}} : $self->{tests};
 }
 
+sub get_name {
+  my $self = shift;
+  return $self->{name};
+}
+
 1;

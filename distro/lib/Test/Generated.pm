@@ -157,6 +157,7 @@ sub gen_test_seq {
           document => $ntst,
           count    => $count,
           tests    => [$class->make_tests ( $ntst )],
+          name     => ($ntst->{test} || ''),
         );
       }
     }
@@ -182,7 +183,7 @@ sub install_tests {
     no strict 'refs';
     *{$longname} = subname $longname => sub {
       my $fixt = shift;
-      diag("Running generated test: $longname");
+      diag("Running generated test: " . ($testseq->get_name || $longname));
       $package->run_one_test_sequence( $fixt, $testseq );
     };
 

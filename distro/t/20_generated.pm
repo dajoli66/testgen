@@ -10,6 +10,7 @@ __PACKAGE__->load_tests (\*DATA);
 __DATA__
 ---
 -
+  test: first run of date
   cmd: date
   out:
    - (Mon|Tue|Wed|Thu|Fri|Sat|Sun)
