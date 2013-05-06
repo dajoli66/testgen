@@ -3,7 +3,7 @@ use strict;
 use warnings;
 
 use base "Test::Generated";
-__PACKAGE__->load_tests (\*DATA);
+__PACKAGE__->load_tests (\*DATA, __FILE__);
 
 1;
 

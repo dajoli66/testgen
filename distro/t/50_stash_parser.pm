@@ -5,7 +5,7 @@ use warnings;
 use Test::More;
 
 use base "Test::Generated";
-__PACKAGE__->load_tests (\*DATA);
+__PACKAGE__->load_tests (\*DATA, __FILE__);
 
 sub parse_date {
   my $fixt = shift;

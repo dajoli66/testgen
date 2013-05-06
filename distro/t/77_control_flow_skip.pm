@@ -10,7 +10,7 @@ use lib "$FindBin::Bin/lib/perl5";
 use base "My::Generated";
 
 __PACKAGE__->set_base_class;
-__PACKAGE__->load_tests (\*DATA);
+__PACKAGE__->load_tests (\*DATA, __FILE__);
 
 1;
 

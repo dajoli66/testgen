@@ -28,6 +28,5 @@ __DATA__
    - Jan|Feb|Mar|Apr|May|Jun|Jul|Aug|Sep|Oct|Nov|Dec
   parser: parse_day_from_date
 -
-  test: test in __FILE__ at line __LINE__
   cmd: date
   out: \k<day>
