@@ -3,7 +3,7 @@ use strict;
 use warnings;
 
 use base "Test::Generated";
-__PACKAGE__->load_tests (\*DATA);
+__PACKAGE__->load_tests (\*DATA, __FILE__);
 
 
 sub parse_day_from_date {
@@ -21,11 +21,13 @@ sub parse_day_from_date {
 __DATA__
 ---
 -
+  test: test in __FILE__ at line __LINE__
   cmd: date
   out:
    - Mon|Tue|Wed|Thu|Fri|Sat|Sun
    - Jan|Feb|Mar|Apr|May|Jun|Jul|Aug|Sep|Oct|Nov|Dec
   parser: parse_day_from_date
 -
+  test: test in __FILE__ at line __LINE__
   cmd: date
   out: \k<day>

@@ -128,8 +128,18 @@ sub gen_tests {
   my $package = shift;
 
   my $fh = shift || \*DATA;
-  my $contents = slurp $fh;
-  my $ydoc = Load( $contents );
+  my $fn = shift || '(unknown)';
+  my @contents = slurp $fh;
+  $DB::single = 1;
+  my $line = $.;
+  foreach (@contents) {
+    s{__FILE__}{$fn}g if $fn;
+    s{__LINE__}{$line}g;
+    s{^- (.*)$}{- test: $fn:$line\n  $1};
+    s{^-$}{- test: line $line of $fn};
+    $line++;
+  }
+  my $ydoc = Load( join('', @contents) );
 
   return $package->gen_test_seq( $ydoc );
 }
@@ -227,14 +237,14 @@ sub run_one_test_sequence {
 # autoload tests
 # NB this only works for one file per 'module'
 # additional files need an explicit
-#   __PACKAGE__->load_tests(\*DATA);
+#   __PACKAGE__->load_tests(\*DATA, __FILE__);
 # NBNB this line is always "safe" to include
 # thanks to the eof() test below
 INIT {
   foreach my $subclass (__PACKAGE__->_test_classes) {
     no strict 'refs';
     next if eof(\*{"$subclass"."::DATA"});
-    __PACKAGE__->load_tests (\*{"$subclass"."::DATA"});
+    __PACKAGE__->load_tests (\*{"$subclass"."::DATA"}, $subclass);
   }
 }
 
@@ -333,7 +343,7 @@ Test::Generated - automatic generation of unit tests from simple YAML declaratio
 =head1 SYNOPSIS
 
   use base 'Test::Generated';
-  __PACKAGE__->load_tests( \*DATA ); # only needed if multiple files include tests
+  __PACKAGE__->load_tests( \*DATA, __FILE__ ); # only needed if multiple files include tests
   1;
   __DATA__
   ---
@@ -366,6 +376,16 @@ computed from the environment.
 The basic modules included are each documented separately, this document
 describes the common API they all implement and the way the test methods are
 created.
+
+=head2 Standard Features
+
+In all test documents the strings __FILE__ and __LINE__ will be substituted with
+the current filename (if known) and line number.
+
+Each test has a name, which is printed as a diagnostic when the tests are run.
+The default name is "__FILE__:__LINE__" but can be overridden by setting a value
+for the key 'test'. The name (and file/line) are useful when running different
+test subsets, since the test numbers change over time.
 
 =head1 SUBCLASSING
 
@@ -411,7 +431,7 @@ captures interpolated before the test method is called.
 
   package Capture::Example;
   use base 'Test::Generated';
-  __PACKAGE__->load_tests (\*DATA);
+  __PACKAGE__->load_tests (\*DATA, __FILE__);
   1;
   __DATA__
   ---
@@ -453,7 +473,7 @@ computed values. For example:
   package Config::Example
   use base 'Test::Generated';
   __PACKAGE__->capture( host => 'myhost.example.com' );
-  __PACKAGE__->load_tests (\*DATA);
+  __PACKAGE__->load_tests (\*DATA, __FILE__);
   1;
   __DATA__
   ---
