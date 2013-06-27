@@ -29,7 +29,7 @@ sub get_count {
 
 sub get_tests {
   my $self = shift;
-  return wantarry ? @{$self->{tests}} : $self->{tests};
+  return wantarray ? @{$self->{tests}} : $self->{tests};
 }
 
 sub get_name {
