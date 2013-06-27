@@ -2,8 +2,7 @@ package My::Tests;
 use strict;
 use warnings;
 
-use base "Test::Generated";
-__PACKAGE__->load_tests (\*DATA, __FILE__);
+use Test::Generated;
 
 1;
 

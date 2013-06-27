@@ -3,7 +3,7 @@ use strict;
 use warnings;
 
 use Test::More;
-use base 'Test::Generated';
+use Test::Generated;
 
 #
 # define standard Test::Generated API methods

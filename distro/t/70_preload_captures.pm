@@ -14,7 +14,6 @@ my @days = qw(Sun Mon Tue Wed Thu Fri Sat);
 my $today = $days[(localtime)[6]];
 __PACKAGE__->capture( config => $today, host => 'localhost' );
 
-__PACKAGE__->load_tests (\*DATA, __FILE__);
 
 1;
 

@@ -3,8 +3,7 @@ use strict;
 use warnings;
 
 use Test::More;
-use base "Test::Generated";
-__PACKAGE__->load_tests (\*DATA, __FILE__);
+use Test::Generated;
 
 my $private_var = 0;
 

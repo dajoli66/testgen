@@ -15,6 +15,27 @@ use Data::Dumper;
 use Test::Generated::TestSequence;
 use Test::Generated::TestSequenceList;
 
+# this import method is really just a hook so we can insert some magic into
+# client classes, with some switch support for micromanagement
+sub import {
+  my $class = shift;
+  my @opts  = @_;
+
+  my $caller = caller;
+
+  # 1. pretend we got loaded by 'use parent' not just 'use'
+  no strict 'refs';
+  push @{$caller .'::'. 'ISA'}, __PACKAGE__;
+
+  # 2. install out END block
+  eval qq{package $caller; END {$class->runtests_once}}
+    unless grep /-noautorun/, @opts;
+
+  # 3. load any DATA tests after compiling the file
+  eval qq{package $caller; UNITCHECK {$class->_load_tests(\*DATA, __FILE__)}}
+    unless grep /-noload/, @opts;
+}
+
 # this is an abstract base class, no tests here
 # but we need to skip it or startup/shutdown methods
 # will run for this class
@@ -247,6 +268,15 @@ INIT {
     __PACKAGE__->load_tests (\*{"$subclass"."::DATA"}, $subclass);
   }
 }
+
+# autorun tests
+# NB this should be called in an END block in each test 'module'
+# the conditional means only the first such block actually runs the tests
+sub runtests_once {
+  Test::Class->runtests
+    unless Test::Class->builder->current_test > 1;
+}
+
 
 # preserved captures
 

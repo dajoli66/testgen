@@ -9,7 +9,7 @@ use FindBin;
 use lib "$FindBin::Bin/../lib/perl5";
 use lib "$FindBin::Bin/lib/perl5";
 
-use base "Test::Generated";
+use Test::Generated;
 
 __PACKAGE__->load_tests ($_) foreach @ARGV;
 

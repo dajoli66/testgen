@@ -2,7 +2,7 @@ package My::Generated;
 use strict;
 use warnings;
 
-use base 'Test::Generated';
+use Test::Generated;
 
 __PACKAGE__->set_base_class;
 
