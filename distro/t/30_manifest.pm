@@ -5,6 +5,8 @@ use warnings;
 use base "Test::Generated";
 __PACKAGE__->load_tests (\*DATA, __FILE__);
 
+END { __PACKAGE__->runtests_once }
+
 1;
 
 =pod

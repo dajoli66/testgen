@@ -5,6 +5,7 @@ use warnings;
 use Test::More;
 use base "Test::Generated";
 __PACKAGE__->load_tests (\*DATA, __FILE__);
+END { __PACKAGE__->runtests_once }
 
 my $private_var = 0;
 

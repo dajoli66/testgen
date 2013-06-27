@@ -11,6 +11,7 @@ use base "My::Generated";
 
 __PACKAGE__->set_base_class;
 __PACKAGE__->load_tests (\*DATA, __FILE__);
+END { __PACKAGE__->runtests_once }
 
 1;
 

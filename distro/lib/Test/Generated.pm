@@ -248,6 +248,15 @@ INIT {
   }
 }
 
+# autorun tests
+# NB this should be called in an END block in each test 'module'
+# the conditional means only the first such block actually runs the tests
+sub runtests_once {
+  Test::Class->runtests
+    unless Test::Class->builder->current_test > 1;
+}
+
+
 # preserved captures
 
 # we wrap Test::Builder::_regex_ok which implements like and unlike
